@@ -1,9 +1,12 @@
 import { init, Ditto } from '@dittolive/ditto'
 import express from 'express'
 import fs from 'fs'
+import { spawn } from 'child_process';
 
 const app = express();
 const port = 3000;
+
+let pythonProcess = null;
 
 // Increase the limit to, for example, '50mb'
 app.use(express.json({ limit: '50mb' }));
@@ -179,8 +182,30 @@ async function main () {
 
         if (docs.value['status'] == 'start') {
             console.log('Starting ATR...')
+            if (pythonProcess === null) {
+                // Start the Python script
+                pythonProcess = spawn('python', ['v8_detector.py']);
+
+                // Handle output
+                pythonProcess.stdout.on('data', (data) => {
+                    console.log(`stdout: ${data}`);
+                })
+
+                pythonProcess.on('close', () => {
+                    console.log('Python process exited');
+                    pythonProcess = null; // Reset the variable to allow a future restart
+                });
+            } else {
+                console.log("Process running, this should not happen...")
+            }
         } else if (docs.value['status'] == 'stop') {
             console.log('Stopping ATR...')
+            if (pythonProcess !== null) {
+                // Kill the Python process
+                pythonProcess.kill();
+            } else {
+                console.log("ATR is not running...")
+            }
         }
 
         // let changeHandler = 
