@@ -1,4 +1,4 @@
 ultralytics==8.1.23
 opencv-python-headless
-pytube
 requests
+flask
