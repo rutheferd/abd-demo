@@ -180,32 +180,39 @@ async function main () {
 
         console.log(docs.value)
 
+        // Assuming `docs.value['status']` contains either 'start' or 'stop'
         if (docs.value['status'] == 'start') {
-            console.log('Starting ATR...')
-            if (pythonProcess === null) {
-                // Start the Python script
-                pythonProcess = spawn('python', ['v8_detector.py']);
+            console.log('Starting ATR...');
 
-                // Handle output
-                pythonProcess.stdout.on('data', (data) => {
-                    console.log(`stdout: ${data}`);
-                })
+            // Use fetch to call the /run endpoint
+            fetch('http://127.0.0.1:5000/run', {
+                method: 'GET'
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data.message); // Log the response from the Flask app
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
 
-                pythonProcess.on('close', () => {
-                    console.log('Python process exited');
-                    pythonProcess = null; // Reset the variable to allow a future restart
-                });
-            } else {
-                console.log("Process running, this should not happen...")
-            }
         } else if (docs.value['status'] == 'stop') {
-            console.log('Stopping ATR...')
-            if (pythonProcess !== null) {
-                // Kill the Python process
-                pythonProcess.kill();
-            } else {
-                console.log("ATR is not running...")
-            }
+            console.log('Stopping ATR...');
+
+            // Use fetch to call the /stop endpoint
+            fetch('http://127.0.0.1:5000/stop', {
+                method: 'GET'
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data.message); // Log the response from the Flask app
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+
+        } else {
+            console.log("Unknown status...");
         }
 
         // let changeHandler = 
