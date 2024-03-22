@@ -100,7 +100,7 @@ class ABDManager:
 
     def start(self):
         if not self.running:
-            self.cap = cv2.VideoCapture(0) # TODO: Don't hardcode
+            self.cap = cv2.VideoCapture(0)  # TODO: Don't hardcode
             self.running = True
             self.thread = threading.Thread(target=self.run_abd)
             self.thread.start()
@@ -135,13 +135,16 @@ def stop_abd():
     abd_manager.stop()
     return jsonify({"message": "ABD stopped."})
 
-@app.route('/video_feed')
+
+@app.route("/video_feed")
 def video_feed():
-    return Response(abd_manager.run_abd(),
-                    mimetype='multipart/x-mixed-replace; boundary=frame')
+    return Response(
+        abd_manager.run_abd(), mimetype="multipart/x-mixed-replace; boundary=frame"
+    )
 
 
 if __name__ == "__main__":
     port = 5000  # Default Flask port
+    host = "0.0.0.0"
     logging.info(f"Starting Flask server on port {port}")
-    app.run(debug=True, port=port, threaded=True)
+    app.run(host=host, debug=True, port=port, threaded=True)
