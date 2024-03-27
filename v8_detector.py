@@ -4,6 +4,7 @@ import requests
 import logging
 from flask import Flask, jsonify, Response
 import threading
+import time
 
 app = Flask(__name__)
 logging.basicConfig(
@@ -18,9 +19,14 @@ class ABDManager:
         self.thread = None
         self.running = False
         self.count = 0
+        self.frame = None
+
+    def get_frames(self):
+        while self.frame is None:
+            time.sleep(0)
+        return self.frame
 
     def run_abd(self):
-        self.cap = cv2.VideoCapture(0)
         logging.info("ABD run_abd started")
         while self.running:
             ret, frame = self.cap.read()
@@ -77,26 +83,9 @@ class ABDManager:
                         color,
                         2,
                     )
-                # cv2.imshow("Frame", frame)
-                ret, buffer = cv2.imencode(".jpg", frame)
-                frame = buffer.tobytes()
-                yield (
-                    b"--frame\r\n"
-                    + b"Content-Type: image/jpeg\r\n\r\n"
-                    + frame
-                    + b"\r\n"
-                )
+                self.frame = frame
             else:
-                ret, buffer = cv2.imencode(".jpg", frame)
-                frame = buffer.tobytes()
-                yield (
-                    b"--frame\r\n"
-                    + b"Content-Type: image/jpeg\r\n\r\n"
-                    + frame
-                    + b"\r\n"
-                )
-                # cv2.imshow("Frame", frame)
-                logging.info("No Detections")
+                self.frame = frame
 
     def start(self):
         if not self.running:
@@ -136,10 +125,20 @@ def stop_abd():
     return jsonify({"message": "ABD stopped."})
 
 
+def generate_frames():
+    while True:
+        frame = abd_manager.get_frames()
+        ret, buffer = cv2.imencode(".jpg", frame)
+        frame_bytes = buffer.tobytes()
+        yield (
+            b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n"
+        )
+
+
 @app.route("/video_feed")
 def video_feed():
     return Response(
-        abd_manager.run_abd(), mimetype="multipart/x-mixed-replace; boundary=frame"
+        generate_frames(), mimetype="multipart/x-mixed-replace; boundary=frame"
     )
 
 
