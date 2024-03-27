@@ -1,9 +1,17 @@
 import { init, Ditto, TransportConfig } from '@dittolive/ditto'
 import express from 'express'
 import fs from 'fs'
+import nconf from 'nconf'
+
+let ditto;
+let collection;
+let transportConfig;
+let identity;
+let interval = 2000; // 1000ms or 1Hz
+let counter = 0;
+let presenceObserver;
 
 // Use config file to setup ditto auth...
-let nconf = require("nconf");
 nconf.argv().env().file({ file: "config.json" });
 
 const getConfig = (key, fallback) => nconf.get(key) || fallback;
@@ -136,7 +144,6 @@ app.post('/model/update/:id', async (req, res) => {
     res.status(201).send({ message: "Model updated successfully", id: id });
 });
 
-let ditto
 let liveQuery
 let statusQuery
 let statusSub
@@ -200,18 +207,18 @@ async function main () {
     console.log(`BPA_URL: ${config.BPA_URL}`);
 
     if (config.BPA_URL == "NA") {
-    identity = {
-        type: "sharedKey",
-        appID: config.APP_ID,
-        sharedKey: config.SHARED_KEY,
-    };
+        identity = {
+            type: "sharedKey",
+            appID: config.APP_ID,
+            sharedKey: config.SHARED_KEY,
+        };
     } else {
-    identity = {
-        type: "onlineWithAuthentication",
-        appID: config.APP_ID,
-        enableDittoCloudSync: false,
-        authHandler: authHandler,
-        customAuthURL: config.BPA_URL,
+        identity = {
+            type: "onlineWithAuthentication",
+            appID: config.APP_ID,
+            enableDittoCloudSync: false,
+            authHandler: authHandler,
+            customAuthURL: config.BPA_URL,
     };
     }
 
