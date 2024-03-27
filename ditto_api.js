@@ -2,7 +2,7 @@ import { init, Ditto } from '@dittolive/ditto'
 import express from 'express'
 import fs from 'fs'
 import { spawn } from 'child_process';
-import { tak_chats } from '../tak_chats';
+import { tak_chats } from './tak_chats.js';
 
 // Use config file to setup ditto auth...
 let nconf = require("nconf");
