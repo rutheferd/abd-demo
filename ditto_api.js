@@ -2,6 +2,16 @@ import { init, Ditto } from '@dittolive/ditto'
 import express from 'express'
 import fs from 'fs'
 import { spawn } from 'child_process';
+import { tak_chats } from './tak_chats';
+
+
+// Use config file to setup ditto auth...
+let nconf = require("nconf");
+nconf.argv().env().file({ file: "config.json" });
+
+const getConfig = (key, fallback) => nconf.get(key) || fallback;
+const asBoolean = (value) =>
+  [true, "true", "True", "TRUE", "1", 1].includes(value);
 
 const app = express();
 const port = 3000;
@@ -141,16 +151,91 @@ async function main () {
     await init()
 
     // This is technically creating a big peer instance?
-    ditto = new Ditto({
-        type: 'onlinePlayground',
-        appID: '71add2bb-0c43-4d8e-a619-bfa29f93a225',
-        token: '24b762b8-4161-4663-b52a-e216a816fdc0'
-    });
+    // ditto = new Ditto({
+    //     type: 'onlinePlayground',
+    //     appID: '71add2bb-0c43-4d8e-a619-bfa29f93a225',
+    //     token: '24b762b8-4161-4663-b52a-e216a816fdc0'
+    // });
+
+    const config = {
+        APP_ID: getConfig("ditto:app-id", ""),
+        APP_TOKEN: getConfig("ditto:app-token", ""),
+        OFFLINE_TOKEN: getConfig("ditto:offline-token", ""),
+        SHARED_KEY: getConfig("ditto:shared-key", ""),
+        USE_CLOUD: asBoolean(getConfig("ditto:use-cloud", true)),
+        USE_LAN: asBoolean(getConfig("ditto:use-lan", true)),
+        USE_BLE: asBoolean(getConfig("ditto:use-ble", true)),
+        BPA_URL: getConfig("ditto:bpa-url", ""),
+      };
+
+    console.log(config.APP_ID)
+    console.log(config.APP_TOKEN)
+    console.log(config.OFFLINE_TOKEN)
+    console.log(config.SHARED_KEY)
+    console.log(config.USE_CLOUD)
+    console.log(config.USE_LAN)
+    console.log(config.USE_BLE)
+    console.log(config.BLA_URL)
+
+    // We're testing BLE here
+    transportConfig = new TransportConfig();
+    transportConfig.peerToPeer.bluetoothLE.isEnabled = config.USE_BLE;
+    transportConfig.peerToPeer.lan.isEnabled = config.USE_LAN;
 
     // Start the Express server
     app.listen(port, () => {
         console.log(`Server running at http://localhost:${port}`);
     });
+
+    const authHandler = {
+        authenticationRequired: async function (authenticator) {
+          await authenticator.loginWithToken("full_access", "dummy-provider");
+          console.log(`Login requested`);
+        },
+        authenticationExpiringSoon: function (
+          authenticator,
+          secondsRemaining,
+        ) {
+          console.log(`Auth token expiring in ${secondsRemaining} seconds`);
+        },
+      };
+    
+    console.log(`BPA_URL: ${config.BPA_URL}`);
+
+    if (config.BPA_URL == "NA") {
+    identity = {
+        type: "sharedKey",
+        appID: config.APP_ID,
+        sharedKey: config.SHARED_KEY,
+    };
+    } else {
+    identity = {
+        type: "onlineWithAuthentication",
+        appID: config.APP_ID,
+        enableDittoCloudSync: false,
+        authHandler: authHandler,
+        customAuthURL: config.BPA_URL,
+    };
+    }
+
+    ditto = new Ditto(identity, "./ditto");
+
+    if (config.BPA_URL == "NA") {
+    ditto.setOfflineOnlyLicenseToken(config.OFFLINE_TOKEN);
+    }
+    const transportConditionsObserver = ditto.observeTransportConditions(
+    (condition, source) => {
+        if (condition === "BLEDisabled") {
+        console.log("BLE disabled");
+        } else if (condition === "NoBLECentralPermission") {
+        console.log("Permission missing for BLE");
+        } else if (condition === "NoBLEPeripheralPermission") {
+        console.log("Permissions missing for BLE");
+        }
+    },
+    );
+
+    ditto.setTransportConfig(transportConfig);
 
     ditto.startSync();
 
@@ -171,12 +256,6 @@ async function main () {
 
     const statusQueryCallback = (docs, event) => {
         console.log("statusQueryCallback...")
-        // const get_data = ditto.store.execute(
-        //     `SELECT * 
-        //     FROM contact 
-        //     WHERE _id = 'status'`,
-        //     null
-        // )
 
         console.log(docs.value)
 
@@ -249,6 +328,8 @@ async function main () {
             .collection("contact")
             .findByID("status")
             .subscribe()
+
+    tak_chats(ditto);
 }
 
 main()
