@@ -382,4 +382,9 @@ async function main () {
     })
 }
 
+function logTime(){
+    //TODO time
+    console.log("------------------------- " + new Date().toISOString())
+  }
+
 main()
