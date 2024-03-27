@@ -2,11 +2,13 @@ from ultralytics import YOLO
 import cv2
 import requests
 import logging
-from flask import Flask, jsonify
+from flask import Flask, jsonify, Response
 import threading
 
 app = Flask(__name__)
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 
 
 class ABDManager:
@@ -18,7 +20,6 @@ class ABDManager:
         self.count = 0
 
     def run_abd(self):
-        self.running = True
         self.cap = cv2.VideoCapture(0)
         logging.info("ABD run_abd started")
         while self.running:
@@ -77,20 +78,30 @@ class ABDManager:
                         2,
                     )
                 # cv2.imshow("Frame", frame)
+                ret, buffer = cv2.imencode(".jpg", frame)
+                frame = buffer.tobytes()
+                yield (
+                    b"--frame\r\n"
+                    + b"Content-Type: image/jpeg\r\n\r\n"
+                    + frame
+                    + b"\r\n"
+                )
             else:
+                ret, buffer = cv2.imencode(".jpg", frame)
+                frame = buffer.tobytes()
+                yield (
+                    b"--frame\r\n"
+                    + b"Content-Type: image/jpeg\r\n\r\n"
+                    + frame
+                    + b"\r\n"
+                )
                 # cv2.imshow("Frame", frame)
                 logging.info("No Detections")
 
-            if cv2.waitKey(1) == ord("q"):
-                break
-                # Release resources outside the loop
-        if self.cap is not None:
-            self.cap.release()
-            cv2.destroyAllWindows()
-            logging.info("ABD run_abd stopped")
-
     def start(self):
         if not self.running:
+            self.cap = cv2.VideoCapture(0)  # TODO: Don't hardcode
+            self.running = True
             self.thread = threading.Thread(target=self.run_abd)
             self.thread.start()
             logging.info("ABD started")
@@ -100,7 +111,10 @@ class ABDManager:
     def stop(self):
         if self.running:
             self.running = False
-            self.thread.join()
+            if self.thread is not None:
+                self.thread.join()
+            if self.cap is not None:
+                self.cap.release()
             logging.info("ABD stopped.")
         else:
             logging.info("ABD is not running...")
@@ -122,7 +136,15 @@ def stop_abd():
     return jsonify({"message": "ABD stopped."})
 
 
+@app.route("/video_feed")
+def video_feed():
+    return Response(
+        abd_manager.run_abd(), mimetype="multipart/x-mixed-replace; boundary=frame"
+    )
+
+
 if __name__ == "__main__":
     port = 5000  # Default Flask port
+    host = "0.0.0.0"
     logging.info(f"Starting Flask server on port {port}")
-    app.run(debug=True, port=port)
+    app.run(host=host, debug=True, port=port, threaded=True)
