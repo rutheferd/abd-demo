@@ -147,6 +147,8 @@ app.post('/model/update/:id', async (req, res) => {
 let liveQuery
 let statusQuery
 let statusSub
+let subscriptionChat
+let liveQueryChat
 let tasks = []
 let models = []
 let subscription
