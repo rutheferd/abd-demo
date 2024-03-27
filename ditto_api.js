@@ -1,4 +1,4 @@
-import { init, Ditto } from '@dittolive/ditto'
+import { init, Ditto, TransportConfig } from '@dittolive/ditto'
 import express from 'express'
 import fs from 'fs'
 
