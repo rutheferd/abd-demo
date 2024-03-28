@@ -2,6 +2,7 @@ import { init, Ditto, TransportConfig } from "@dittolive/ditto";
 import express from "express";
 import fs from "fs";
 import nconf from "nconf";
+import { start } from "repl";
 
 let ditto;
 let collection;
@@ -51,12 +52,10 @@ app.post("/model/insert/", async (req, res) => {
   res.status(201).send({ message: "Report inserted successfully" });
 });
 
-app.post("/model/start/", async (req, res) => {
+// Start ATR Function
+async function startATR() {
   console.log("Starting ATR...");
 
-  ////
-  // Send Start
-  ////
   const start_message = {
     _id: "status",
     status: "start",
@@ -64,16 +63,26 @@ app.post("/model/start/", async (req, res) => {
 
   await ditto.store.execute(
     `INSERT INTO contact
-        DOCUMENTS (:start_message)
-        ON ID CONFLICT DO UPDATE`,
+          DOCUMENTS (:start_message)
+          ON ID CONFLICT DO UPDATE`,
     { start_message }
   );
 
-  // Respond to the request indicating success
-  res.status(201).send({ message: "Started successfully" });
+  // Optionally return a value or confirmation
+  return { message: "Started successfully" };
+}
+
+// Start ATR API
+app.post("/model/start/", async (req, res) => {
+  try {
+    const result = await startATR();
+    res.status(201).send(result);
+  } catch (error) {
+    res.status(500).send({ message: "An error occurred" });
+  }
 });
 
-app.post("/model/stop/", async (req, res) => {
+async function stopATR() {
   console.log("Stopping ATR...");
 
   ////
@@ -86,13 +95,22 @@ app.post("/model/stop/", async (req, res) => {
 
   await ditto.store.execute(
     `INSERT INTO contact
-        DOCUMENTS (:stop_message)
-        ON ID CONFLICT DO UPDATE`,
+          DOCUMENTS (:stop_message)
+          ON ID CONFLICT DO UPDATE`,
     { stop_message }
   );
 
+  return { message: "Stopped successfully" };
+}
+
+app.post("/model/stop/", async (req, res) => {
+  try {
+    const result = await stopATR();
+    res.status(201).send(result);
+  } catch (error) {
+    res.status(500).send({ message: "An error occorred" });
+  }
   // Respond to the request indicating success
-  res.status(201).send({ message: "Stopped successfully" });
 });
 
 app.post("/model/update/:id", async (req, res) => {
@@ -344,6 +362,18 @@ async function main() {
           updateEvent.insertions.forEach((index) => {
             let doc = docs[index];
 
+            // Authenticated Start Message
+            if (doc.value.msg == "start 1a2b3c") {
+                let result = startATR();
+                console.log(result)
+            }
+
+            // Authenticated Stop Message
+            if (doc.value.msg == "stop 1a2b3c") {
+                let result = stopATR();
+                console.log(result)
+            }
+
             console.log(
               updateCnt++ +
                 " TAK Chat insertion takUid: " +
@@ -367,6 +397,18 @@ async function main() {
           updateEvent.updates.forEach((index) => {
             let doc = docs[index];
 
+            // Authenticated Start Message
+            if (doc.value.msg == "start 1a2b3c") {
+                let result = startATR();
+                console.log(result)
+            }
+
+            // Authenticated Stop Message
+            if (doc.value.msg == "stop 1a2b3c") {
+                let result = stopATR();
+                console.log(result)
+            }
+
             console.log(
               updateCnt++ +
                 " TAK Chat update takUid: " +
@@ -389,10 +431,6 @@ async function main() {
           console.log(
             "TAK Chat deletions cnt: " + updateEvent.deletions.length
           );
-          // updateEvent.deletions.forEach( (index) => {
-          //         let doc = docs[index]
-          //         console.log((updateCnt++) + " TAK Chat deletion: " + doc.id)
-          //     });
         }
       }
     });
