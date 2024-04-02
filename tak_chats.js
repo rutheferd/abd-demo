@@ -55,7 +55,10 @@ export async function tak_chats(ditto) {
                 ", _id: " +
                 doc.value._id +
                 ", msg: " +
-                doc.value.msg
+                doc.value.msg +
+                ", Author Location" +
+                doc.value.takAuthorLocation
+                
             );
             if (LOG_INFO) console.log("TAK Chat data: " + doc.value.msg);
             if (doc.value.isRemoved) {

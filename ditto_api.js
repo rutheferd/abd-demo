@@ -1,9 +1,10 @@
-import { init, Ditto, TransportConfig } from "@dittolive/ditto";
+import { init, Ditto, TransportConfig, Logger } from "@dittolive/ditto";
 import express from "express";
 import fs from "fs";
 import nconf from "nconf";
 import { start } from "repl";
 import { tak_chats } from "./tak_chats.js"
+import { v4 as uuidv4 } from 'uuid';
 
 let ditto;
 let collection;
@@ -11,6 +12,11 @@ let transportConfig;
 let identity;
 let interval = 2000; // 1000ms or 1Hz
 let counter = 0;
+let to_chat = true;
+let ATR_PORT = 5005;
+
+Logger.enabled = true
+Logger.minimumLogLevel = 'Info'
 
 // Use config file to setup ditto auth...
 nconf.argv().env().file({ file: "config.json" });
@@ -36,13 +42,39 @@ app.post("/model/insert/", async (req, res) => {
     ...modelData,
   };
 
-  // Here, you would insert the new model into your Ditto store or another storage system
-  // Example (adjust according to your actual data structure and requirements):
   await ditto.store.execute(
     `INSERT INTO contact
         DOCUMENTS (:new_model)`,
     { new_model }
   );
+
+  if (to_chat) {
+    // Upload Contact Report to TAK Chat
+    const contact_report = {
+      room: "ditto",
+      roomId: "ChatContact-Ditto",
+      takAuthorCallsign: "DTO-A172",
+      siteId: "3307442499255136657",
+      takUid: uuidv4(),
+      takAuthorUid: "DTO-A172",
+      takAuthorLocation: "0.0,0.0,NaN,HAE,NaN,NaN",
+      takAuthorType: "a-f-G",
+      timeMillis:timeNow(),
+      // msg: "vwDQiZZDetZkjmgUMA5K93PFKmDVKQ9Y0P9MQ5neLCBEXDFeyTY3HYd6MSSXOJtQ"
+      msg: `\nConfidence: ${new_model["confidence"]}\n
+      bbox: ${new_model["bbox"]}\n
+      class: ${new_model["class"]}\n
+      lat: ${new_model["lat"]}\n
+      lon: ${new_model["long"]}`
+    };
+  
+    await ditto.store.execute(
+      `INSERT INTO TAK_Chats
+          DOCUMENTS (:contact_report)`,
+      { contact_report }
+    );
+
+  }
 
   // Respond to the request indicating success
   res.status(201).send({ message: "Report inserted successfully" });
@@ -57,12 +89,16 @@ export async function startATR() {
     status: "start",
   };
 
+  console.log()
+
   await ditto.store.execute(
     `INSERT INTO contact
           DOCUMENTS (:start_message)
           ON ID CONFLICT DO UPDATE`,
     { start_message }
   );
+
+  console.log("Got HEre!")
 
   // Optionally return a value or confirmation
   return { message: "Started successfully" };
@@ -196,7 +232,7 @@ async function main() {
   console.log(config.USE_CLOUD);
   console.log(config.USE_LAN);
   console.log(config.USE_BLE);
-  console.log(config.BLA_URL);
+  console.log(config.BPA_URL);
 
   // We're testing BLE here
   transportConfig = new TransportConfig();
@@ -261,8 +297,8 @@ async function main() {
     // store documents that match out query in the local tasks object
     console.log("Updating Tasks...");
     console.log(new Date().toISOString());
-    models = docs;
-    console.log(models);
+    // models = docs;
+    // console.log(models);
     // const model_data = models.map((model) => model.value);
     // const obj = Object.fromEntries(model_data);
     // fs.writeFile("test.txt", obj, function(err) {
@@ -281,8 +317,9 @@ async function main() {
     if (docs.value["status"] == "start") {
       console.log("Starting ATR...");
 
+      console.log(`http://127.0.0.1:${ATR_PORT}/run`)
       // Use fetch to call the /run endpoint
-      fetch("http://127.0.0.1:5000/run", {
+      fetch(`http://127.0.0.1:${ATR_PORT}/run`, {
         method: "GET",
       })
         .then((response) => response.json())
@@ -296,7 +333,7 @@ async function main() {
       console.log("Stopping ATR...");
 
       // Use fetch to call the /stop endpoint
-      fetch("http://127.0.0.1:5000/stop", {
+      fetch(`http://127.0.0.1:${ATR_PORT}/stop`, {
         method: "GET",
       })
         .then((response) => response.json())
@@ -336,3 +373,8 @@ async function main() {
 }
 
 main();
+
+function timeNow(){
+  //make it a Double
+  return Date.now() + 0.001
+}
