@@ -5,11 +5,14 @@ import logging
 from flask import Flask, jsonify, Response
 import threading
 import time
+import os
 
 app = Flask(__name__)
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
+
+THUMBNAIL_SIZE = 150
 
 
 class ABDManager:
@@ -20,6 +23,9 @@ class ABDManager:
         self.running = False
         self.count = 0
         self.frame = None
+        self.image_path = "test.jpeg"
+        self.thumb_path = "test_thumb.jpeg"
+        self.payload = None
 
     def get_frames(self):
         while self.frame is None:
@@ -58,19 +64,46 @@ class ABDManager:
                     # If its a person, send a report!
                     print(self.count)
                     if (pred_class == "person") and (self.count % 100 == 0):
+
+                        # Put the probability label
+                        label = f"{pred_class}-{box.conf.tolist()[0]:.2f}"
+                        frame = cv2.putText(
+                            frame,
+                            label,
+                            (int(xmin), int(ymin) - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.7,
+                            color,
+                            2,
+                        )
+                        thumbnail = cv2.resize(
+                            frame,
+                            (THUMBNAIL_SIZE, THUMBNAIL_SIZE),
+                            interpolation=cv2.INTER_AREA,
+                        )
+                        cv2.imwrite(self.thumb_path, thumbnail)
+                        cv2.imwrite(self.image_path, frame)
+
+                        # TODO: Have JS do this??
+                        image_stats = os.stat(self.image_path)
+                        thumb_stats = os.stat(self.thumb_path)
+
                         # send report...
-                        payload = {
+                        self.payload = {
                             "confidence": box.conf.tolist()[0],
                             "bbox": [xmin, ymin, xmax, ymax],
                             "class": "Person",
                             "lat": 33.953826,
                             "long": -118.396315,
+                            "image_path": self.image_path,
+                            "thumb_path": self.thumb_path,
+                            "image_size": float(image_stats.st_size),
+                            "thumb_size": float(thumb_stats.st_size)
                         }
-                        print(payload)
-                        insert_url = "http://localhost:3000/model/insert/"
+                        print(self.payload)
 
-                        # Send the POST request
-                        response = requests.post(insert_url, json=payload)
+                        insert_url = "http://localhost:3000/model/insert/"
+                        response = requests.post(insert_url, json=self.payload)
 
                     # Put the probability label
                     label = f"{pred_class}-{box.conf.tolist()[0]:.2f}"
@@ -143,7 +176,7 @@ def video_feed():
 
 
 if __name__ == "__main__":
-    port = 5000  # Default Flask port
+    port = 5005  # Default Flask port
     host = "0.0.0.0"
     logging.info(f"Starting Flask server on port {port}")
     app.run(host=host, debug=True, port=port, threaded=True)

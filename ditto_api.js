@@ -3,8 +3,8 @@ import express from "express";
 import fs from "fs";
 import nconf from "nconf";
 import { start } from "repl";
-import { tak_chats } from "./tak_chats.js"
-import { v4 as uuidv4 } from 'uuid';
+import { tak_chats } from "./tak_chats.js";
+import { v4 as uuidv4 } from "uuid";
 
 let ditto;
 let collection;
@@ -15,8 +15,8 @@ let counter = 0;
 let to_chat = true;
 let ATR_PORT = 5005;
 
-Logger.enabled = true
-Logger.minimumLogLevel = 'Info'
+Logger.enabled = true;
+Logger.minimumLogLevel = "Info";
 
 // Use config file to setup ditto auth...
 nconf.argv().env().file({ file: "config.json" });
@@ -59,21 +59,71 @@ app.post("/model/insert/", async (req, res) => {
       takAuthorUid: "DTO-A172",
       takAuthorLocation: "0.0,0.0,NaN,HAE,NaN,NaN",
       takAuthorType: "a-f-G",
-      timeMillis:timeNow(),
+      timeMillis: timeNow(),
       // msg: "vwDQiZZDetZkjmgUMA5K93PFKmDVKQ9Y0P9MQ5neLCBEXDFeyTY3HYd6MSSXOJtQ"
       msg: `\nConfidence: ${new_model["confidence"]}\n
       bbox: ${new_model["bbox"]}\n
       class: ${new_model["class"]}\n
       lat: ${new_model["lat"]}\n
-      lon: ${new_model["long"]}`
+      lon: ${new_model["long"]}`,
     };
-  
+
     await ditto.store.execute(
       `INSERT INTO TAK_Chats
           DOCUMENTS (:contact_report)`,
       { contact_report }
     );
 
+    console.log(new_model["image_path"])
+
+    const newAttachment = await ditto.store.newAttachment(
+      `${new_model["image_path"]}`
+    );
+
+    const thumbAttachment = await ditto.store.newAttachment(
+      `${new_model["thumb_path"]}`
+    );
+
+    // Create a new document object and store the attachment on the `my_attachment` field.
+    const attachmentID = uuidv4()
+    const newDocument = {
+      _id: attachmentID,
+      tak_file: newAttachment,
+      siteId: "3307442499255136657",
+      size: parseFloat(new_model["image_size"]) + 0.0,
+      mime: "image/jpeg",
+      takAuthorCallsign: "DTO-A172",
+      takUid: uuidv4(),
+      takAuthorUid: "DTO-A172",
+      takAuthorLocation: "0.0,0.0,NaN,HAE,NaN,NaN",
+      takAuthorType: "a-f-G-U-C",
+      timeMillis: timeNow(),
+      isRemoved: false,
+      name: "test.jpeg"
+    };
+
+    // Insert the new document into the collection
+    // Note that the `my_attachment` field needs to be defined as an ATTACHMENT data type
+    await ditto.store.execute(
+      `
+      INSERT INTO COLLECTION TAK_Attachments (tak_file ATTACHMENT)
+      DOCUMENTS (:newDocument)`,
+      { newDocument }
+    );
+
+    const thumbnailDocument = {
+      _id: attachmentID,
+      thumbnail_file: thumbAttachment,
+      thumbnail_size: parseFloat(new_model["thumb_size"]) + 0.0,
+    }
+
+    await ditto.store.execute(
+      `
+        INSERT INTO COLLECTION TAK_Attachments (thumbnail_file ATTACHMENT)
+        DOCUMENTS (:thumbnailDocument)
+        ON ID CONFLICT DO UPDATE`,
+        { thumbnailDocument }
+    )
   }
 
   // Respond to the request indicating success
@@ -89,7 +139,7 @@ export async function startATR() {
     status: "start",
   };
 
-  console.log()
+  console.log();
 
   await ditto.store.execute(
     `INSERT INTO contact
@@ -98,7 +148,7 @@ export async function startATR() {
     { start_message }
   );
 
-  console.log("Got HEre!")
+  console.log("Got HEre!");
 
   // Optionally return a value or confirmation
   return { message: "Started successfully" };
@@ -317,7 +367,7 @@ async function main() {
     if (docs.value["status"] == "start") {
       console.log("Starting ATR...");
 
-      console.log(`http://127.0.0.1:${ATR_PORT}/run`)
+      console.log(`http://127.0.0.1:${ATR_PORT}/run`);
       // Use fetch to call the /run endpoint
       fetch(`http://127.0.0.1:${ATR_PORT}/run`, {
         method: "GET",
@@ -374,7 +424,7 @@ async function main() {
 
 main();
 
-function timeNow(){
+function timeNow() {
   //make it a Double
-  return Date.now() + 0.001
+  return Date.now() + 0.001;
 }
