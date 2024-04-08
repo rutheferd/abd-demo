@@ -5,6 +5,9 @@ import nconf from "nconf";
 import { start } from "repl";
 import { tak_chats } from "./tak_chats.js";
 import { v4 as uuidv4 } from "uuid";
+import os from "os";
+import { createHash } from 'crypto';
+
 
 let ditto;
 let collection;
@@ -53,10 +56,10 @@ app.post("/model/insert/", async (req, res) => {
     const contact_report = {
       room: "ditto",
       roomId: "ChatContact-Ditto",
-      takAuthorCallsign: "DTO-A172",
+      takAuthorCallsign: getConfig("info:name", "unknown"),
       siteId: "3307442499255136657",
       takUid: uuidv4(),
-      takAuthorUid: "DTO-A172",
+      takAuthorUid: getConfig("info:name", "unknown"),
       takAuthorLocation: "0.0,0.0,NaN,HAE,NaN,NaN",
       takAuthorType: "a-f-G",
       timeMillis: timeNow(),
@@ -90,16 +93,17 @@ app.post("/model/insert/", async (req, res) => {
       _id: attachmentID,
       tak_file: newAttachment,
       siteId: "3307442499255136657",
+      hash: hashFileSync(new_model["image_path"]),
       size: parseFloat(new_model["image_size"]) + 0.0,
       mime: "image/jpeg",
-      takAuthorCallsign: "DTO-A172",
+      takAuthorCallsign: getConfig("info:name", "unknown"),
       takUid: uuidv4(),
-      takAuthorUid: "DTO-A172",
+      takAuthorUid: getConfig("info:name", "unknown"),
       takAuthorLocation: "0.0,0.0,NaN,HAE,NaN,NaN",
       takAuthorType: "a-f-G-U-C",
       timeMillis: timeNow(),
       isRemoved: false,
-      name: "test.jpeg"
+      name: `${os.hostname()}-${attachmentID.slice(-5)}.jpg`
     };
 
     // Insert the new document into the collection
@@ -323,6 +327,7 @@ async function main() {
   }
 
   ditto = new Ditto(identity, "./ditto");
+  ditto.deviceName = `${getConfig("info:name", os.hostname())} - ATR`
 
   if (config.BPA_URL == "NA") {
     ditto.setOfflineOnlyLicenseToken(config.OFFLINE_TOKEN);
@@ -427,4 +432,18 @@ main();
 function timeNow() {
   //make it a Double
   return Date.now() + 0.001;
+}
+
+// Function to calculate SHA-256 hash of a file synchronously
+function hashFileSync(filePath) {
+  // Read file content synchronously
+  const fileBuffer = fs.readFileSync(filePath);
+  
+  // Create a SHA-256 hash instance
+  const hash = createHash('sha256');
+  
+  // Update hash with file content and digest it in hexadecimal format
+  const hashSum = hash.update(fileBuffer).digest('hex');
+  
+  return hashSum;
 }
