@@ -47,7 +47,6 @@ class ABDManager:
 
             # Assuming 'frame' is your current video frame, and 'result' contains the model predictions
             if len(results[0].boxes) > 0:
-                self.count = self.count + 1
                 for box in results[0].boxes:
                     # Draw rectangle (bounding box)
                     # print(box)
@@ -61,49 +60,52 @@ class ABDManager:
                     )
                     pred_class = results[0].names[box.cls.tolist()[0]]
 
-                    # If its a person, send a report!
-                    print(self.count)
-                    if (pred_class == "person") and (self.count % 100 == 0):
+                    if (pred_class == "person"):
+                        # IF a person update count
+                        print(self.count)
+                        self.count = self.count + 1
+                        # If we are sure its a person, send a report!
+                        if (self.count % 25 == 0):
 
-                        # Put the probability label
-                        label = f"{pred_class}-{box.conf.tolist()[0]:.2f}"
-                        frame = cv2.putText(
-                            frame,
-                            label,
-                            (int(xmin), int(ymin) - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            0.7,
-                            color,
-                            2,
-                        )
-                        thumbnail = cv2.resize(
-                            frame,
-                            (THUMBNAIL_SIZE, THUMBNAIL_SIZE),
-                            interpolation=cv2.INTER_AREA,
-                        )
-                        cv2.imwrite(self.thumb_path, thumbnail)
-                        cv2.imwrite(self.image_path, frame)
+                            # Put the probability label
+                            label = f"{pred_class}-{box.conf.tolist()[0]:.2f}"
+                            frame = cv2.putText(
+                                frame,
+                                label,
+                                (int(xmin), int(ymin) - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX,
+                                0.7,
+                                color,
+                                2,
+                            )
+                            thumbnail = cv2.resize(
+                                frame,
+                                (THUMBNAIL_SIZE, THUMBNAIL_SIZE),
+                                interpolation=cv2.INTER_AREA,
+                            )
+                            cv2.imwrite(self.thumb_path, thumbnail)
+                            cv2.imwrite(self.image_path, frame)
 
-                        # TODO: Have JS do this??
-                        image_stats = os.stat(self.image_path)
-                        thumb_stats = os.stat(self.thumb_path)
+                            # TODO: Have JS do this??
+                            image_stats = os.stat(self.image_path)
+                            thumb_stats = os.stat(self.thumb_path)
 
-                        # send report...
-                        self.payload = {
-                            "confidence": box.conf.tolist()[0],
-                            "bbox": [xmin, ymin, xmax, ymax],
-                            "class": "Person",
-                            "lat": 33.953826,
-                            "long": -118.396315,
-                            "image_path": self.image_path,
-                            "thumb_path": self.thumb_path,
-                            "image_size": float(image_stats.st_size),
-                            "thumb_size": float(thumb_stats.st_size)
-                        }
-                        print(self.payload)
+                            # send report...
+                            self.payload = {
+                                "confidence": box.conf.tolist()[0],
+                                "bbox": [xmin, ymin, xmax, ymax],
+                                "class": "Person",
+                                "lat": 33.953826,
+                                "long": -118.396315,
+                                "image_path": self.image_path,
+                                "thumb_path": self.thumb_path,
+                                "image_size": float(image_stats.st_size),
+                                "thumb_size": float(thumb_stats.st_size)
+                            }
+                            print(self.payload)
 
-                        insert_url = "http://localhost:3000/model/insert/"
-                        response = requests.post(insert_url, json=self.payload)
+                            insert_url = "http://localhost:3000/model/insert/"
+                            response = requests.post(insert_url, json=self.payload)
 
                     # Put the probability label
                     label = f"{pred_class}-{box.conf.tolist()[0]:.2f}"
