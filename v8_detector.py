@@ -163,7 +163,7 @@ def stop_abd():
 def generate_frames():
     while True:
         frame = abd_manager.get_frames()
-        ret, buffer = cv2.imencode(".jpg", frame)
+        ret, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
         frame_bytes = buffer.tobytes()
         yield (
             b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n"
