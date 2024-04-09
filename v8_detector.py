@@ -12,7 +12,7 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
-THUMBNAIL_SIZE = 150
+THUMBNAIL_SIZE = 400
 
 
 class ABDManager:
