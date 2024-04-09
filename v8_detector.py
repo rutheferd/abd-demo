@@ -125,6 +125,8 @@ class ABDManager:
     def start(self):
         if not self.running:
             self.cap = cv2.VideoCapture(0)  # TODO: Don't hardcode
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
             self.running = True
             self.thread = threading.Thread(target=self.run_abd)
             self.thread.start()
@@ -163,7 +165,7 @@ def stop_abd():
 def generate_frames():
     while True:
         frame = abd_manager.get_frames()
-        ret, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
+        ret, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 20])
         frame_bytes = buffer.tobytes()
         yield (
             b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n"
