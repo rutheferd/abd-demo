@@ -12,7 +12,7 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
-THUMBNAIL_SIZE = 200
+THUMBNAIL_SIZE = 500
 
 
 class ABDManager:
@@ -125,8 +125,6 @@ class ABDManager:
     def start(self):
         if not self.running:
             self.cap = cv2.VideoCapture(0)  # TODO: Don't hardcode
-            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
             self.running = True
             self.thread = threading.Thread(target=self.run_abd)
             self.thread.start()

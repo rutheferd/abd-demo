@@ -79,21 +79,23 @@ app.post("/model/insert/", async (req, res) => {
 
     console.log(new_model["image_path"])
 
+    const attachmentID = hashFileSync(new_model["image_path"])
+
     const newAttachment = await ditto.store.newAttachment(
-      `${new_model["image_path"]}`
+      `${new_model["image_path"]}`, { name: `${os.hostname()}-${attachmentID.slice(-5)}.jpeg` }
     );
 
     const thumbAttachment = await ditto.store.newAttachment(
-      `${new_model["thumb_path"]}`
+      `${new_model["thumb_path"]}`, { name: `${os.hostname()}-${attachmentID.slice(-5)}.jpeg` }
     );
 
     // Create a new document object and store the attachment on the `my_attachment` field.
-    const attachmentID = uuidv4()
     const newDocument = {
       _id: attachmentID,
       tak_file: newAttachment,
+      contentType: null,
       siteId: "3307442499255136657",
-      hash: hashFileSync(new_model["image_path"]),
+      hash: attachmentID,
       size: parseFloat(new_model["image_size"]) + 0.0,
       mime: "image/jpeg",
       takAuthorCallsign: getConfig("info:name", "unknown"),
@@ -103,7 +105,7 @@ app.post("/model/insert/", async (req, res) => {
       takAuthorType: "a-f-G-U-C",
       timeMillis: timeNow(),
       isRemoved: false,
-      name: `${os.hostname()}-${attachmentID.slice(-5)}.jpg`
+      name: `${os.hostname()}-${attachmentID.slice(-5)}.jpeg`
     };
 
     // Insert the new document into the collection
