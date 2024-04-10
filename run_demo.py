@@ -6,7 +6,7 @@ insert_url = "http://localhost:3000/model/start/"
 # Start Demo...
 response = requests.post(insert_url)
 
-time.sleep(30.0)
+time.sleep(5.0)
 
 insert_url = "http://localhost:3000/model/stop/"
 
