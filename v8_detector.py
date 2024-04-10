@@ -4,11 +4,15 @@ import requests
 import logging
 from flask import Flask, jsonify, Response
 import threading
+import time
+import os
 
 app = Flask(__name__)
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
+
+THUMBNAIL_SIZE = 500
 
 
 class ABDManager:
@@ -18,9 +22,17 @@ class ABDManager:
         self.thread = None
         self.running = False
         self.count = 0
+        self.frame = None
+        self.image_path = "test.jpeg"
+        self.thumb_path = "test_thumb.jpeg"
+        self.payload = None
+
+    def get_frames(self):
+        while self.frame is None:
+            time.sleep(0)
+        return self.frame
 
     def run_abd(self):
-        self.cap = cv2.VideoCapture(0)
         logging.info("ABD run_abd started")
         while self.running:
             ret, frame = self.cap.read()
@@ -35,7 +47,6 @@ class ABDManager:
 
             # Assuming 'frame' is your current video frame, and 'result' contains the model predictions
             if len(results[0].boxes) > 0:
-                self.count = self.count + 1
                 for box in results[0].boxes:
                     # Draw rectangle (bounding box)
                     # print(box)
@@ -49,22 +60,52 @@ class ABDManager:
                     )
                     pred_class = results[0].names[box.cls.tolist()[0]]
 
-                    # If its a person, send a report!
-                    print(self.count)
-                    if (pred_class == "person") and (self.count % 100 == 0):
-                        # send report...
-                        payload = {
-                            "confidence": box.conf.tolist()[0],
-                            "bbox": [xmin, ymin, xmax, ymax],
-                            "class": "Person",
-                            "lat": 33.953826,
-                            "long": -118.396315,
-                        }
-                        print(payload)
-                        insert_url = "http://localhost:3000/model/insert/"
+                    if (pred_class == "person"):
+                        # IF a person update count
+                        print(self.count)
+                        self.count = self.count + 1
+                        # If we are sure its a person, send a report!
+                        if (self.count % 25 == 0):
 
-                        # Send the POST request
-                        response = requests.post(insert_url, json=payload)
+                            # Put the probability label
+                            label = f"{pred_class}-{box.conf.tolist()[0]:.2f}"
+                            frame = cv2.putText(
+                                frame,
+                                label,
+                                (int(xmin), int(ymin) - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX,
+                                0.7,
+                                color,
+                                2,
+                            )
+                            thumbnail = cv2.resize(
+                                frame,
+                                (THUMBNAIL_SIZE, THUMBNAIL_SIZE),
+                                interpolation=cv2.INTER_AREA,
+                            )
+                            cv2.imwrite(self.thumb_path, thumbnail)
+                            cv2.imwrite(self.image_path, frame)
+
+                            # TODO: Have JS do this??
+                            image_stats = os.stat(self.image_path)
+                            thumb_stats = os.stat(self.thumb_path)
+
+                            # send report...
+                            self.payload = {
+                                "confidence": box.conf.tolist()[0],
+                                "bbox": [xmin, ymin, xmax, ymax],
+                                "class": "Person",
+                                "lat": 33.953826,
+                                "long": -118.396315,
+                                "image_path": self.image_path,
+                                "thumb_path": self.thumb_path,
+                                "image_size": float(image_stats.st_size),
+                                "thumb_size": float(thumb_stats.st_size)
+                            }
+                            print(self.payload)
+
+                            insert_url = "http://localhost:3000/model/insert/"
+                            response = requests.post(insert_url, json=self.payload)
 
                     # Put the probability label
                     label = f"{pred_class}-{box.conf.tolist()[0]:.2f}"
@@ -77,26 +118,9 @@ class ABDManager:
                         color,
                         2,
                     )
-                # cv2.imshow("Frame", frame)
-                ret, buffer = cv2.imencode(".jpg", frame)
-                frame = buffer.tobytes()
-                yield (
-                    b"--frame\r\n"
-                    + b"Content-Type: image/jpeg\r\n\r\n"
-                    + frame
-                    + b"\r\n"
-                )
+                self.frame = frame
             else:
-                ret, buffer = cv2.imencode(".jpg", frame)
-                frame = buffer.tobytes()
-                yield (
-                    b"--frame\r\n"
-                    + b"Content-Type: image/jpeg\r\n\r\n"
-                    + frame
-                    + b"\r\n"
-                )
-                # cv2.imshow("Frame", frame)
-                logging.info("No Detections")
+                self.frame = frame
 
     def start(self):
         if not self.running:
@@ -136,15 +160,25 @@ def stop_abd():
     return jsonify({"message": "ABD stopped."})
 
 
+def generate_frames():
+    while True:
+        frame = abd_manager.get_frames()
+        ret, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 20])
+        frame_bytes = buffer.tobytes()
+        yield (
+            b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n"
+        )
+
+
 @app.route("/video_feed")
 def video_feed():
     return Response(
-        abd_manager.run_abd(), mimetype="multipart/x-mixed-replace; boundary=frame"
+        generate_frames(), mimetype="multipart/x-mixed-replace; boundary=frame"
     )
 
 
 if __name__ == "__main__":
-    port = 5000  # Default Flask port
+    port = 5005  # Default Flask port
     host = "0.0.0.0"
     logging.info(f"Starting Flask server on port {port}")
     app.run(host=host, debug=True, port=port, threaded=True)
