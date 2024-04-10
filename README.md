@@ -24,15 +24,15 @@ This call will insert a provided contact report into the TAK Chat ditto collecti
 - **Sample Data**
   ```json
     payload = {
-        "confidence": <float>,
-        "bbox": Array<[xmin, ymin, xmax, ymax]>,
-        "class": <string>,
-        "lat": <float>,
-        "long": <float>,
-        "image_path": <string>,
-        "thumb_path": <string>,
-        "image_size": <float>,
-        "thumb_size": <float>
+        "confidence": "<float>",
+        "bbox": "Array<[xmin, ymin, xmax, ymax]>",
+        "class": "<string>",
+        "lat": "<float>",
+        "long": "<float>",
+        "image_path": "<string>",
+        "thumb_path": "<string>",
+        "image_size": "<float>",
+        "thumb_size": "<float>"
     }
   ```
 
@@ -68,9 +68,8 @@ This call will reprogram the onboard computer vision model with the provided upd
 - **Sample Data**
   ```json
   payload = {
-    "param1": <float>,
-    ...
-    "paramN": <float>
+    "param1": "<float>",
+    "paramN": "<float>"
   }
   ```
 
