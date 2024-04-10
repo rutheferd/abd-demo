@@ -11,17 +11,13 @@ In order to showcase ditto's integration with AI capabilities we have taken one 
 
 ## COD Stub Features
 
-1. TAK + Ditto Attachment Insert (For contact report images)
-2. TAK Chat + Ditto Document Insert (For Start/Stop and Contact Report)
-3. 
-
 ### Insert Contact Report
-This call will insert a provided contact report into the TAK Chat ditto collection and a processed image into the TAK Attachments ditto collection.
+This call will insert a provided contact report into the TAK Chat ditto collection and a processed image (+ thumbnail) into the TAK Attachments ditto collection.
 - **URL**: `/model/insert`
 - **Method**: POST
 - **Sample Call**: 
   ```curl
-    curl -X POST http://yourserver.com/model/insert/ \
+  curl -X POST http://yourserver.com/model/insert/ \
         -H "Content-Type: application/json" \
         -d @sampleData.json
   ```
@@ -38,6 +34,44 @@ This call will insert a provided contact report into the TAK Chat ditto collecti
         "image_size": <float>,
         "thumb_size": <float>
     }
+  ```
+
+### Start ATR Ditto Update
+This call will trigger the `startATR()` function which will invoke a ditto update with a status property of `"start"`.
+- **URL**: `/model/start`
+- **Method**: POST
+- **Sample Call**: 
+  ```curl
+  curl -X POST http://yourserver.com/model/start/ 
+  ```
+
+### Stop ATR Ditto Update
+This call will trigger the `stopATR()` function which will invoke a ditto update with a status property of `"stop"`.
+- **URL**: `/model/stop`
+- **Method**: POST
+- **Sample Call**: 
+  ```curl
+  curl -X POST http://yourserver.com/model/stop/ 
+  ```
+
+### 🚧 Update ATR Model 🚧
+This call will reprogram the onboard computer vision model with the provided updates. The existing model parameters will be mapped and replace with provided parameters.
+- **URL**: `/model/update/:id`
+- **URL Params**: `id=[string]`
+- **Method**: POST
+- **Sample Call**: 
+  ```curl
+  curl -X POST http://yourserver.com/model/insert/ \
+        -H "Content-Type: application/json" \
+        -d @sampleData.json
+  ```
+- **Sample Data**
+  ```json
+  payload = {
+    "param1": <float>,
+    ...
+    "paramN": <float>
+  }
   ```
 
 
@@ -75,6 +109,42 @@ This call will present a video feed for images processed by the ATR. `index.html
 
 ## How to Install
 
-In order to successfully run the COD_Stub with 
+To install COD_Stub dependencies:
+
+```zsh
+npm install
+```
+
+This will install the packages defined in the `package.json` file in the repo.
+
+To install ATR dependencies:
+
+```zsh
+python -m pip install -r requirements.txt
+```
+
+This assumes that you have a python virtual environment (don't install globally 😅). 
 
 ## How to Run
+
+To start COD_Stub:
+
+```zsh
+node ditto_api.js
+```
+
+To start ATR:
+
+```zsh
+python v8_detector.py
+```
+
+To run a quick sanity check run:
+
+```zsh
+python run_demo.py
+```
+
+This will the start status via the COD_Stub API which will start the ATR via the ATR API. It will run for five seconds with the local camera being used to process frames. 
+
+Contact reports will be logged into the NodeJS terminal session, and images will be save to the local directory.
