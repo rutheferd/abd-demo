@@ -69,15 +69,15 @@ class ABDManager:
 
                             # Put the probability label
                             label = f"{pred_class}-{box.conf.tolist()[0]:.2f}"
-                            frame = cv2.putText(
-                                frame,
-                                label,
-                                (int(xmin), int(ymin) - 10),
-                                cv2.FONT_HERSHEY_SIMPLEX,
-                                0.7,
-                                color,
-                                2,
-                            )
+                            # frame = cv2.putText(
+                            #     frame,
+                            #     label,
+                            #     (int(xmin), int(ymin) - 10),
+                            #     cv2.FONT_HERSHEY_SIMPLEX,
+                            #     0.7,
+                            #     color,
+                            #     2,
+                            # )
                             thumbnail = cv2.resize(
                                 frame,
                                 (THUMBNAIL_SIZE, THUMBNAIL_SIZE),
