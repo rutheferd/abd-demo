@@ -55,9 +55,9 @@ class ABDManager:
                     end_point = (int(xmax), int(ymax))
                     color = (255, 0, 0)  # Blue color in BGR
                     thickness = 2  # Thickness of 2 px
-                    frame = cv2.rectangle(
-                        frame, start_point, end_point, color, thickness
-                    )
+                    # frame = cv2.rectangle(
+                    #     frame, start_point, end_point, color, thickness
+                    # )
                     pred_class = results[0].names[box.cls.tolist()[0]]
 
                     if (pred_class == "person"):
