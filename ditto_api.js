@@ -1,6 +1,6 @@
 import { init, Ditto, TransportConfig, Logger } from "@dittolive/ditto";
 import express from "express";
-import fs from "fs";
+import { fs, writeFile } from "fs";
 import nconf from "nconf";
 import { start } from "repl";
 import { tak_chats } from "./tak_chats.js";
@@ -240,7 +240,7 @@ app.post("/model/update/:id", async (req, res) => {
   );
 
   let changeHandler = get_data.items.forEach((element) => {
-    fs.writeFile("test.json", element.jsonString(), function (err) {
+    writeFile("test.json", element.jsonString(), function (err) {
       if (err) {
         console.log(err);
       }
@@ -310,22 +310,6 @@ async function main() {
     },
   };
 
-  // if (config.BPA_URL == "NA") {
-  //   identity = {
-  //     type: "sharedKey",
-  //     appID: config.APP_ID,
-  //     sharedKey: config.SHARED_KEY,
-  //   };
-  // } else {
-  //   identity = {
-  //     type: "onlineWithAuthentication",
-  //     appID: config.APP_ID,
-  //     enableDittoCloudSync: false,
-  //     authHandler: authHandler,
-  //     customAuthURL: config.BPA_URL,
-  //   };
-  // }
-
   // ditto = new Ditto(identity, "./ditto");
   ditto = new Ditto({ type: 'onlinePlayground', appID: config.APP_ID, token: config.APP_TOKEN})
   ditto.deviceName = `${getConfig("info:name", os.hostname())} - ATR`
@@ -346,6 +330,12 @@ async function main() {
   );
 
   ditto.setTransportConfig(transportConfig);
+
+  try {
+    ditto.sync.registerSubscription(`SELECT * FROM COLLECTION models (model_file ATTACHMENT) WHERE loaded = true`);
+  } catch (err) {
+    console.error(err);
+  }
 
   ditto.startSync();
 
@@ -428,7 +418,80 @@ async function main() {
   tak_chats(ditto);
 }
 
-main();
+async function saveModel(data, filePath) {
+  console.log("Saving Model...")
+  return new Promise((resolve, reject) => {
+      // Create a buffer from the Uint8Array data
+      const buffer = Buffer.from(data);
+
+      // Write the buffer to a file
+      writeFile(filePath, buffer, (err) => {
+          if (err) {
+              reject(err);
+          } else {
+              resolve();
+          }
+      });
+  });
+}
+
+async function downloadAttachment(attachment) {
+  // Extract the attachment token
+  const attachmentToken = attachment.value.model_file;
+
+  // Download the attachment
+  await ditto.store.fetchAttachment(attachmentToken, async (event) => {
+    if (event.type === 'Completed') {
+        console.log(`${attachmentToken.id} Attachment Download Complete!`);
+        const attachmentData = await event.attachment.data();  // Assuming getData() returns a Uint8Array or similar
+        // FIXME: Not a big fan of this if statement
+        saveModel(attachmentData, `model.pt`)
+        .then(() => {
+            console.log('Image saved successfully.');
+            attachment.dematerialize()
+        })
+        .catch((err) => {
+            console.error('Error saving image:', err);
+            attachment.dematerialize()
+        });
+        // console.log(bbox);
+    } else if (event.type === 'Deleted') {
+        console.log("Attachment was not found.");
+    } else if (event.type === 'Progress') {
+        console.log(`Attachment ID ${attachmentToken.id} downloaded ${event.downloadedBytes} bytes of ${event.totalBytes} bytes`);
+    }
+  });
+}
+
+async function handle_model() {
+  const changeHandler = async (result) => {
+    console.log("Downloading Model...");
+    downloadAttachment(result.items[0])
+    .then(() => {
+        console.log('Model downloaded successfully.');
+        // @app.route("/new_model", methods=["POST"])
+        // Send POST with the model.pt file path
+        const model_path = "model.pt";
+        // Add the model path to the request body
+        const data = {
+            model_path: model_path
+        };
+        // Send the POST request
+        fetch(`http://127.0.0.1:${ATR_PORT}/new_model`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(data)
+        })
+      })
+    .catch((err) => {
+        console.error('Error downloading model:', err);
+      });
+  ditto.store.registerObserver(`SELECT * FROM COLLECTION models (model_file ATTACHMENT) WHERE loaded = true`, changeHandler);
+  }
+}
+
 
 function timeNow() {
   //make it a Double
@@ -448,3 +511,6 @@ function hashFileSync(filePath) {
   
   return hashSum;
 }
+
+main();
+handle_model();

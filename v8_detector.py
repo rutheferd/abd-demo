@@ -159,6 +159,20 @@ def stop_abd():
     abd_manager.stop()
     return jsonify({"message": "ABD stopped."})
 
+@app.route("/new_model", methods=["POST"])
+def new_model():
+    # Get data from request
+    request = requests.get_json()
+    logging.info("NEW MODEL!")
+    logging.info("Stopping ABD...")
+    abd_manager.stop()
+    logging.info("ABD stopped.")
+    model = request["model"]  # Model Path from API POST
+    abd_manager.model = YOLO(model)
+    logging.info("ABD model updated.")
+    logging.info("Starting ABD...")
+    abd_manager.start()
+
 
 def generate_frames():
     while True:
