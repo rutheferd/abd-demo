@@ -41,6 +41,7 @@ class ABDManager:
 
             # Perform detection
             results = self.model(frame)
+            print(results)
 
             # Display results
             # results[0].show()  # This method is provided by the ultralytics YOLOv8 packa
@@ -102,7 +103,7 @@ class ABDManager:
                                 "image_size": float(image_stats.st_size),
                                 "thumb_size": float(thumb_stats.st_size)
                             }
-                            print(self.payload)
+                            # print(self.payload)
 
                             insert_url = "http://localhost:3000/model/insert/"
                             response = requests.post(insert_url, json=self.payload)

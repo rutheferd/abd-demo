@@ -123,13 +123,13 @@ app.post("/model/insert/", async (req, res) => {
       thumbnail_size: parseFloat(new_model["thumb_size"]) + 0.0,
     }
 
-    await ditto.store.execute(
-      `
-        INSERT INTO COLLECTION TAK_Attachments (thumbnail_file ATTACHMENT)
-        DOCUMENTS (:thumbnailDocument)
-        ON ID CONFLICT DO UPDATE`,
-        { thumbnailDocument }
-    )
+    // await ditto.store.execute(
+    //   `
+    //     INSERT INTO COLLECTION TAK_Attachments (thumbnail_file ATTACHMENT)
+    //     DOCUMENTS (:thumbnailDocument)
+    //     ON ID CONFLICT DO UPDATE`,
+    //     { thumbnailDocument }
+    // )
   }
 
   // Respond to the request indicating success
