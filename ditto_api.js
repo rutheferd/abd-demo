@@ -1,6 +1,6 @@
 import { init, Ditto, TransportConfig, Logger } from "@dittolive/ditto";
 import express from "express";
-import { fs, writeFile } from "fs";
+import fs from "fs";
 import nconf from "nconf";
 import { start } from "repl";
 import { tak_chats } from "./tak_chats.js";
@@ -240,7 +240,7 @@ app.post("/model/update/:id", async (req, res) => {
   );
 
   let changeHandler = get_data.items.forEach((element) => {
-    writeFile("test.json", element.jsonString(), function (err) {
+    fs.writeFile("test.json", element.jsonString(), function (err) {
       if (err) {
         console.log(err);
       }
@@ -436,7 +436,7 @@ async function saveModel(data, filePath) {
       const buffer = Buffer.from(data);
 
       // Write the buffer to a file
-      writeFile(filePath, buffer, (err) => {
+      fs.writeFile(filePath, buffer, (err) => {
           if (err) {
               reject(err);
           } else {
