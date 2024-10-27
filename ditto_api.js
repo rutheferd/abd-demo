@@ -38,103 +38,98 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 app.post("/model/insert/", async (req, res) => {
-  console.log("Performing Insert...");
-  const modelData = req.body; // The JSON payload
+  try {
+    console.log("Performing Insert...");
+    const modelData = req.body; // The JSON payload
 
-  const new_model = {
-    ...modelData,
-  };
-
-  await ditto.store.execute(
-    `INSERT INTO contact
-        DOCUMENTS (:new_model)`,
-    { new_model }
-  );
-
-  if (to_chat) {
-    // Upload Contact Report to TAK Chat
-    const contact_report = {
-      room: "ditto",
-      roomId: "ChatContact-Ditto",
-      takAuthorCallsign: getConfig("info:name", "unknown"),
-      siteId: "3307442499255136657",
-      takUid: uuidv4(),
-      takAuthorUid: getConfig("info:name", "unknown"),
-      takAuthorLocation: "0.0,0.0,NaN,HAE,NaN,NaN",
-      takAuthorType: "a-f-G",
-      timeMillis: timeNow(),
-      // msg: "vwDQiZZDetZkjmgUMA5K93PFKmDVKQ9Y0P9MQ5neLCBEXDFeyTY3HYd6MSSXOJtQ"
-      msg: `\nConfidence: ${new_model["confidence"]}\n
-      bbox: ${new_model["bbox"]}\n
-      class: ${new_model["class"]}\n
-      lat: ${new_model["lat"]}\n
-      lon: ${new_model["long"]}`,
-    };
-
-    await ditto.store.execute(
-      `INSERT INTO TAK_Chats
-          DOCUMENTS (:contact_report)`,
-      { contact_report }
-    );
-
-    console.log(new_model["image_path"])
-
-    const attachmentID = hashFileSync(new_model["image_path"])
-
-    const newAttachment = await ditto.store.newAttachment(
-      `${new_model["image_path"]}`, { name: `${os.hostname()}-${attachmentID.slice(-5)}.jpeg` }
-    );
-
-    const thumbAttachment = await ditto.store.newAttachment(
-      `${new_model["thumb_path"]}`, { name: `${os.hostname()}-${attachmentID.slice(-5)}.jpeg` }
-    );
-
-    // Create a new document object and store the attachment on the `my_attachment` field.
-    const newDocument = {
-      _id: attachmentID,
-      tak_file: newAttachment,
-      contentType: null,
-      siteId: "3307442499255136657",
-      hash: attachmentID,
-      size: parseFloat(new_model["image_size"]) + 0.0,
-      mime: "image/jpeg",
-      takAuthorCallsign: getConfig("info:name", "unknown"),
-      takUid: uuidv4(),
-      takAuthorUid: getConfig("info:name", "unknown"),
-      takAuthorLocation: "0.0,0.0,NaN,HAE,NaN,NaN",
-      takAuthorType: "a-f-G-U-C",
-      timeMillis: timeNow(),
-      isRemoved: false,
-      name: `${os.hostname()}-${attachmentID.slice(-5)}.jpeg`
-    };
-
-    // Insert the new document into the collection
-    // Note that the `my_attachment` field needs to be defined as an ATTACHMENT data type
-    await ditto.store.execute(
-      `
-      INSERT INTO COLLECTION TAK_Attachments (tak_file ATTACHMENT)
-      DOCUMENTS (:newDocument)`,
-      { newDocument }
-    );
-
-    const thumbnailDocument = {
-      _id: attachmentID,
-      thumbnail_file: thumbAttachment,
-      thumbnail_size: parseFloat(new_model["thumb_size"]) + 0.0,
+    // Validate model data
+    if (!modelData) {
+      return res.status(400).send({ message: "Invalid model data" });
     }
 
-    // await ditto.store.execute(
-    //   `
-    //     INSERT INTO COLLECTION TAK_Attachments (thumbnail_file ATTACHMENT)
-    //     DOCUMENTS (:thumbnailDocument)
-    //     ON ID CONFLICT DO UPDATE`,
-    //     { thumbnailDocument }
-    // )
-  }
+    // Prepare the new model object
+    const new_model = { ...modelData };
 
-  // Respond to the request indicating success
-  res.status(201).send({ message: "Report inserted successfully" });
+    // Insert model data into 'contact' collection
+    await ditto.store.execute(
+      `INSERT INTO contact
+          DOCUMENTS (:new_model)`,
+      { new_model }
+    );
+
+    // Optional: Upload Contact Report to TAK Chat
+    if (to_chat) {
+      const contact_report = {
+        room: "ditto",
+        roomId: "ChatContact-Ditto",
+        takAuthorCallsign: getConfig("info:name", "unknown"),
+        siteId: "3307442499255136657",
+        takUid: uuidv4(),
+        takAuthorUid: getConfig("info:name", "unknown"),
+        takAuthorLocation: "0.0,0.0,NaN,HAE,NaN,NaN",
+        takAuthorType: "a-f-G",
+        timeMillis: timeNow(),
+        msg: `
+        Confidence: ${new_model["confidence"]}\n
+        bbox: ${new_model["bbox"]}\n
+        class: ${new_model["class"]}\n
+        lat: ${new_model["lat"]}\n
+        lon: ${new_model["long"]}`,
+      };
+
+      await ditto.store.execute(
+        `INSERT INTO TAK_Chats
+            DOCUMENTS (:contact_report)`,
+        { contact_report }
+      );
+    }
+
+    // Conditional Attachment Handling
+    if (new_model["image_path"] && new_model["image_size"]) {
+      console.log("Preparing and uploading image attachment...");
+
+      const attachmentID = hashFileSync(new_model["image_path"]);
+
+      const newAttachment = await ditto.store.newAttachment(
+        new_model["image_path"],
+        { name: `${os.hostname()}-${attachmentID.slice(-5)}.jpeg` }
+      );
+
+      const newDocument = {
+        _id: attachmentID,
+        tak_file: newAttachment,
+        contentType: null,
+        siteId: "3307442499255136657",
+        hash: attachmentID,
+        size: parseFloat(new_model["image_size"]) + 0.0,
+        mime: "image/jpeg",
+        takAuthorCallsign: getConfig("info:name", "unknown"),
+        takUid: uuidv4(),
+        takAuthorUid: getConfig("info:name", "unknown"),
+        takAuthorLocation: "0.0,0.0,NaN,HAE,NaN,NaN",
+        takAuthorType: "a-f-G-U-C",
+        timeMillis: timeNow(),
+        isRemoved: false,
+        name: `${os.hostname()}-${attachmentID.slice(-5)}.jpeg`,
+      };
+
+      // Insert the new document with the attachment
+      await ditto.store.execute(
+        `
+        INSERT INTO COLLECTION TAK_Attachments (tak_file ATTACHMENT)
+        DOCUMENTS (:newDocument)`,
+        { newDocument }
+      );
+    }
+
+    // Send success response after processing
+    res.status(201).send({ message: "Report inserted successfully" });
+  } catch (error) {
+    console.error("Error inserting report:", error);
+    res.status(500).send({ message: "Server error. Please try again later." });
+  }
 });
+
 
 // Start ATR Function
 export async function startATR() {
