@@ -33,90 +33,90 @@ class ABDManager:
         return self.frame
 
 
-def run_abd(self):
-    logging.info("ABD run_abd started")
-    while self.running:
-        ret, frame = self.cap.read()
-        if not ret:
-            break
+    def run_abd(self):
+        logging.info("ABD run_abd started")
+        while self.running:
+            ret, frame = self.cap.read()
+            if not ret:
+                break
 
-        # Perform detection
-        results = self.model(frame)
+            # Perform detection
+            results = self.model(frame)
 
-        # Check if there are any detected objects
-        if len(results[0].boxes) > 0:
-            for box in results[0].boxes:
-                # Extract bounding box coordinates
-                xmin, ymin, xmax, ymax = box.xyxy.tolist()[0]
-                # start_point = (int(xmin), int(ymin))
-                # end_point = (int(xmax), int(ymax))
-                # color = (255, 0, 0)  # Blue color in BGR
-                # thickness = 2
+            # Check if there are any detected objects
+            if len(results[0].boxes) > 0:
+                for box in results[0].boxes:
+                    # Extract bounding box coordinates
+                    xmin, ymin, xmax, ymax = box.xyxy.tolist()[0]
+                    # start_point = (int(xmin), int(ymin))
+                    # end_point = (int(xmax), int(ymax))
+                    # color = (255, 0, 0)  # Blue color in BGR
+                    # thickness = 2
 
-                # Get class name and confidence
-                pred_class = results[0].names[box.cls.tolist()[0]]
-                confidence = box.conf.tolist()[0]
+                    # Get class name and confidence
+                    pred_class = results[0].names[box.cls.tolist()[0]]
+                    confidence = box.conf.tolist()[0]
 
-                # Draw bounding box and label on the frame
-                # label = f"{pred_class}-{confidence:.2f}"
-                # frame = cv2.rectangle(frame, start_point, end_point, color,
-                # thickness)
-                # frame = cv2.putText(
-                #     frame,
-                #     label,
-                #     (int(xmin), int(ymin) - 10),
-                #     cv2.FONT_HERSHEY_SIMPLEX,
-                #     0.7,
-                #     color,
-                #     2,
-                # )
+                    # Draw bounding box and label on the frame
+                    # label = f"{pred_class}-{confidence:.2f}"
+                    # frame = cv2.rectangle(frame, start_point, end_point, color,
+                    # thickness)
+                    # frame = cv2.putText(
+                    #     frame,
+                    #     label,
+                    #     (int(xmin), int(ymin) - 10),
+                    #     cv2.FONT_HERSHEY_SIMPLEX,
+                    #     0.7,
+                    #     color,
+                    #     2,
+                    # )
 
-                # Contact report logic based on confidence
-                if 0.4 <= confidence < 0.85:
-                    # Prepare thumbnail and save images
-                    thumbnail = cv2.resize(
-                        frame,
-                        (THUMBNAIL_SIZE, THUMBNAIL_SIZE),
-                        interpolation=cv2.INTER_AREA,
-                    )
-                    cv2.imwrite(self.thumb_path, thumbnail)
-                    cv2.imwrite(self.image_path, frame)
+                    # Contact report logic based on confidence
+                    if 0.4 <= confidence < 0.85:
+                        # Prepare thumbnail and save images
+                        thumbnail = cv2.resize(
+                            frame,
+                            (THUMBNAIL_SIZE, THUMBNAIL_SIZE),
+                            interpolation=cv2.INTER_AREA,
+                        )
+                        cv2.imwrite(self.thumb_path, thumbnail)
+                        cv2.imwrite(self.image_path, frame)
 
-                    # Collect image stats
-                    image_stats = os.stat(self.image_path)
-                    thumb_stats = os.stat(self.thumb_path)
+                        # Collect image stats
+                        image_stats = os.stat(self.image_path)
+                        thumb_stats = os.stat(self.thumb_path)
 
-                    # Prepare payload with images
-                    self.payload = {
-                        "confidence": confidence,
-                        "bbox": [xmin, ymin, xmax, ymax],
-                        "class": pred_class,
-                        "lat": 33.953826,
-                        "long": -118.396315,
-                        "image_path": self.image_path,
-                        "thumb_path": self.thumb_path,
-                        "image_size": float(image_stats.st_size),
-                        "thumb_size": float(thumb_stats.st_size),
-                    }
+                        # Prepare payload with images
+                        self.payload = {
+                            "confidence": confidence,
+                            "bbox": [xmin, ymin, xmax, ymax],
+                            "class": pred_class,
+                            "lat": 33.953826,
+                            "long": -118.396315,
+                            "image_path": self.image_path,
+                            "thumb_path": self.thumb_path,
+                            "image_size": float(image_stats.st_size),
+                            "thumb_size": float(thumb_stats.st_size),
+                        }
 
-                elif confidence >= 0.85:
-                    # Prepare payload without images
-                    self.payload = {
-                        "confidence": confidence,
-                        "bbox": [xmin, ymin, xmax, ymax],
-                        "class": pred_class,
-                        "lat": 33.953826,
-                        "long": -118.396315,
-                    }
+                    elif confidence >= 0.85:
+                        # Prepare payload without images
+                        self.payload = {
+                            "confidence": confidence,
+                            "bbox": [xmin, ymin, xmax, ymax],
+                            "class": pred_class,
+                            "lat": 33.953826,
+                            "long": -118.396315,
+                        }
 
-                # Send the report if the confidence is within the desired range
-                if confidence >= 0.4:
-                    insert_url = "http://localhost:3000/model/insert/"
-                    response = requests.post(insert_url, json=self.payload)
-                    logging.info(f"Report sent: {response.status_code}")
+                    # Send the report if the confidence is within the desired range
+                    if confidence >= 0.4:
+                        insert_url = "http://localhost:3000/model/insert/"
+                        response = requests.post(insert_url, json=self.payload)
+                        logging.info(f"Report sent: {response.status_code}")
 
-        # Update the frame
-        self.frame = frame if ret else None
+            # Update the frame
+            self.frame = frame if ret else None
 
     def start(self):
         if not self.running:
