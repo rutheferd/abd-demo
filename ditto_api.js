@@ -338,6 +338,17 @@ async function main() {
   }
 
   ditto.startSync();
+  // Start the ATR on startup
+  fetch(`http://127.0.0.1:${ATR_PORT}/run`, {
+    method: "GET",
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      console.log(data.message); // Log the response from the Flask app
+    })
+    .catch((error) => {
+      console.error("Error:", error);
+    });
 
   const liveQueryCallback = (docs, event) => {
     // store documents that match out query in the local tasks object
