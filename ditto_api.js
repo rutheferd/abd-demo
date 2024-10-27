@@ -494,7 +494,7 @@ async function handle_model() {
     .catch((err) => {
         console.error('Error downloading model:', err);
       });
-  ditto.store.registerObserver(`SELECT * FROM COLLECTION models (model_file ATTACHMENT) WHERE loaded = true`, changeHandler);
+  ditto.store.registerObserver(`SELECT * FROM COLLECTION models (pytorch_file ATTACHMENT) WHERE loaded = true`, changeHandler);
   }
 }
 
