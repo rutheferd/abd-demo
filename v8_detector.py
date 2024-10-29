@@ -45,17 +45,30 @@ class ABDManager:
 
             # Check if there are any detected objects
             if len(results[0].boxes) > 0:
+                class_indices = []
+                pred_classes = []
+                confidences = []
+
+                # Loop over each detected box
                 for box in results[0].boxes:
                     # Extract bounding box coordinates
                     xmin, ymin, xmax, ymax = box.xyxy.tolist()[0]
-                    # start_point = (int(xmin), int(ymin))
-                    # end_point = (int(xmax), int(ymax))
-                    # color = (255, 0, 0)  # Blue color in BGR
-                    # thickness = 2
 
-                    # Get class name and confidence
-                    pred_class = results[0].names[box.cls.tolist()[0]]
-                    confidence = box.conf.tolist()[0]
+                    # Extract class index and name
+                    class_idx = int(box.cls)  # Single class index
+                    class_name = results[0].names[class_idx]  # Map index to class name
+
+                    # Store class indices and names
+                    class_indices.append(class_idx)
+                    pred_classes.append(class_name)
+
+                    # Extract confidence and store it
+                    confidence = box.conf.tolist()[0]  # Single confidence value
+                    confidences.append(confidence)
+
+                    # Logging the detected classes and confidences
+                    print(f"Detected Classes: {pred_classes}")
+                    print(f"Confidences: {confidences}")
 
                     # Draw bounding box and label on the frame
                     # label = f"{pred_class}-{confidence:.2f}"
@@ -88,9 +101,9 @@ class ABDManager:
 
                         # Prepare payload with images
                         self.payload = {
-                            "confidence": confidence,
+                            "confidence": confidences,
                             "bbox": [xmin, ymin, xmax, ymax],
-                            "class": pred_class,
+                            "class": pred_classes,
                             "lat": 33.953826,
                             "long": -118.396315,
                             "image_path": self.image_path,
@@ -102,18 +115,20 @@ class ABDManager:
                     elif confidence >= 0.85:
                         # Prepare payload without images
                         self.payload = {
-                            "confidence": confidence,
+                            "confidence": confidences,
                             "bbox": [xmin, ymin, xmax, ymax],
-                            "class": pred_class,
+                            "class": pred_classes,
                             "lat": 33.953826,
                             "long": -118.396315,
                         }
 
                     # Send the report if the confidence is within the desired range
-                    if confidence >= 0.4:
+                    if self.count % 400 == 0:
                         insert_url = "http://localhost:3000/model/insert/"
                         response = requests.post(insert_url, json=self.payload)
                         logging.info(f"Report sent: {response.status_code}")
+
+                    self.count = self.count + 1
 
             # Update the frame
             self.frame = frame if ret else None
